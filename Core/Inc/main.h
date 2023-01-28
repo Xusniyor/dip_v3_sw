@@ -59,7 +59,7 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define HRTIM_INPUT_CLOCK 170000000
 #define HRTIMA_PWM_FREQ 10000
-#define MAX_PWM_DUTY_CYCLE (HRTIMA_PERIOD/100)*60
+#define MAX_PWM_DUTY_CYCLE (HRTIMA_PERIOD/100)*50
 #define HRTIMA_PERIOD ((uint16_t)(((uint64_t)HRTIM_INPUT_CLOCK/8)/HRTIMA_PWM_FREQ))
 #define DIN_5_Pin GPIO_PIN_13
 #define DIN_5_GPIO_Port GPIOC

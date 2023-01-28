@@ -40,25 +40,15 @@
 #define ADC2_BUF_LEN 5
 
 /* Controller parameters */
-#define PID_KP1  0.1f
-#define PID_KI1  0.1f
-#define PID_KD1  0.0001f
-#define PID_TAU1 0.02f
-#define PID_LIM_MAX1 (float)(MAX_PWM_DUTY_CYCLE)
-#define PID_LIM_MIN1 0.0f
-#define PID_LIM_MAX_INT1 (float)(MAX_PWM_DUTY_CYCLE)
-#define PID_LIM_MIN_INT1 0.0f
-#define SAMPLE_TIME_S1   0.00789f
-
-#define PID_KP2  0.001f
-#define PID_KI2  0.1f
-#define PID_KD2  0.0001f
-#define PID_TAU2 0.02f
-#define PID_LIM_MAX2 (float)(MAX_PWM_DUTY_CYCLE)
-#define PID_LIM_MIN2 0.0f
-#define PID_LIM_MAX_INT2 (float)(MAX_PWM_DUTY_CYCLE)
-#define PID_LIM_MIN_INT2 0.0f
-#define SAMPLE_TIME_S2   0.00789f
+#define PID_KP  0.12f
+#define PID_KI  0.8f
+#define PID_KD  0.003f
+#define PID_TAU 0.02f
+#define PID_LIM_MAX (float)(MAX_PWM_DUTY_CYCLE)
+#define PID_LIM_MIN 0.0f
+#define PID_LIM_MAX_INT (float)(MAX_PWM_DUTY_CYCLE)
+#define PID_LIM_MIN_INT 0.0f
+#define SAMPLE_TIME_S   0.00789f
 
 /* USER CODE END PD */
 
@@ -80,19 +70,12 @@ uint32_t pwm_soft_start;
 uint8_t  pwm_active;
 
 /* Initialise PID controller */
-PIDController pid1 = {
-	PID_KP1, PID_KI1, PID_KD1,
-	PID_TAU1,
-	PID_LIM_MIN1,     PID_LIM_MAX1,
-	PID_LIM_MIN_INT1, PID_LIM_MAX_INT1,
-	SAMPLE_TIME_S1
-};
-PIDController pid2 = {
-	PID_KP2, PID_KI2, PID_KD2,
-	PID_TAU2,
-	PID_LIM_MIN2,     PID_LIM_MAX2,
-	PID_LIM_MIN_INT2, PID_LIM_MAX_INT2,
-	SAMPLE_TIME_S2
+PIDController pid = {
+	PID_KP, PID_KI, PID_KD,
+	PID_TAU,
+	PID_LIM_MIN,     PID_LIM_MAX,
+	PID_LIM_MIN_INT, PID_LIM_MAX_INT,
+	SAMPLE_TIME_S
 };
 
 /* USER CODE END PV */
@@ -114,22 +97,17 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	if (hadc == &hadc1) {
 		if (pwm_active) {
 			/* Get measurement from system */
-			float measurement1 = (float)ADC1_DMA_Buffer[0];
-			float measurement2 = (float)ADC1_DMA_Buffer[1];
+			float measurement = (float)ADC1_DMA_Buffer[0];
 			/* Simulate response using test system */
-			float setpoint1 = fmap((float)ADC2_DMA_Buffer[0], 4095.0, 0.0, 1241.0, 3239.0);
-			float setpoint2 = fmap((float)ADC2_DMA_Buffer[1], 4095.0, 0.0, 1241.0, 3239.0);
+			float setpoint = fmap((float)ADC2_DMA_Buffer[0], 4095.0, 0.0, 1241.0, 3239.0);
 			/* Compute new control signal */
-			PIDController_Update(&pid1, setpoint1, measurement1);
-			PIDController_Update(&pid2, setpoint2, measurement2);
+			PIDController_Update(&pid, setpoint, measurement);
 
 			pwm_min_value = pwm_soft_start;
 			if (pwm_soft_start < MAX_PWM_DUTY_CYCLE)
-				pwm_soft_start+=4;
-			if (pwm_min_value > (uint32_t)(pid1.out))
-				pwm_min_value = (uint32_t)(pid1.out);
-			if (pwm_min_value > (uint32_t)(pid2.out))
-				pwm_min_value = (uint32_t)(pid2.out);
+				pwm_soft_start+=5;
+			if (pwm_min_value > (uint32_t)(pid.out))
+				pwm_min_value = (uint32_t)(pid.out);
 
 			HRTIM_DMA_Buffer[0] = pwm_min_value;
 		} else {
