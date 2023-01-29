@@ -83,17 +83,18 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 	if (hadc == &hadc1) {
 		if (pwm_active) {
 			// Get new ADC value
-			u_measurement = (double)ADC1_DMA_Buffer[0];
-			i_measurement = (double)ADC1_DMA_Buffer[1];
-			u_setpoint    = dmap((double)ADC2_DMA_Buffer[0], 4095.0, 0.0, 1241.0, 3239.0);
-			i_setpoint    = dmap((double)ADC2_DMA_Buffer[1], 4095.0, 0.0, 1241.0, 3239.0);
+			u_measurement = (double)ADC1_DMA_Buffer[0]; // FeedBack Voltage
+			i_measurement = (double)ADC1_DMA_Buffer[1]; // FeedBack Current
+			u_setpoint    = dmap((double)ADC2_DMA_Buffer[0], 4095.0, 0.0, 1241.0, 3239.0); // Potentiometer Voltage
+			i_setpoint    = dmap((double)ADC2_DMA_Buffer[1], 4095.0, 0.0, 1241.0, 3239.0); // Potentiometer Current
 			// PID calculation
 			PID_Compute(&uPID);
 			PID_Compute(&iPID);
-			pwm_duty_cycle = pwm_soft_start;
 			// Soft start for first time
+			pwm_duty_cycle = pwm_soft_start;
 			if (pwm_soft_start < MAX_PWM_DUTY_CYCLE)
 				pwm_soft_start += 5;
+			// CV or CC Mode
 			if (pwm_duty_cycle > u_pid_output)
 				pwm_duty_cycle = u_pid_output;
 			if (pwm_duty_cycle > i_pid_output)
@@ -144,8 +145,9 @@ int main(void)
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
 
+  // PID controller settings
   PID(&uPID, &u_measurement, &u_pid_output, &u_setpoint, 0.2, 0.3, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
-  PID(&iPID, &i_measurement, &i_pid_output, &i_setpoint, 0.2, 0.3, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
+  PID(&iPID, &i_measurement, &i_pid_output, &i_setpoint, 0.02, 0.03, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
   PID_SetMode(&uPID, _PID_MODE_AUTOMATIC);
   PID_SetMode(&iPID, _PID_MODE_AUTOMATIC);
   PID_SetSampleTime(&uPID, 500);
