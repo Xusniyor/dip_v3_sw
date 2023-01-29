@@ -86,10 +86,14 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 		if (pwm_active) {
 			if (ADC1_DMA_Buffer[1] > fmap((double)ADC2_DMA_Buffer[1], 4095.0, 0.0, 1241.0, 3239.0)) {
 				if (voltage_reduction < 3239.0)
-					voltage_reduction += 1;
+					voltage_reduction += 10;
+				if (voltage_reduction > 3239.0)
+					voltage_reduction = 3239.0;
 			} else {
 				if (voltage_reduction > 0)
-					voltage_reduction -= 1;
+					voltage_reduction -= 10;
+				if (voltage_reduction < 0)
+					voltage_reduction = 0;
 			}
 			// error calculation
 			measurement = (double)ADC1_DMA_Buffer[0];
