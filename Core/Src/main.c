@@ -33,7 +33,7 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-PID_TypeDef TPID;
+PID_TypeDef uPID, iPID;
 
 /* USER CODE END PTD */
 
@@ -58,13 +58,11 @@ uint16_t HRTIM_DMA_Buffer[1];
 uint16_t ADC1_DMA_Buffer[ADC1_BUF_LEN];
 uint16_t ADC2_DMA_Buffer[ADC2_BUF_LEN];
 uint32_t pwm_duty_cycle;
-uint32_t pwm_compare_value;
 uint32_t pwm_soft_start;
 uint8_t  pwm_active;
-double measurement;
-double setpoint;
-double pid_output;
-double voltage_reduction;
+double u_measurement, i_measurement;
+double u_setpoint,    i_setpoint;
+double u_pid_output,  i_pid_output;
 
 /* USER CODE END PV */
 
@@ -77,37 +75,31 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-double fmap(double x, double in_min, double in_max, double out_min, double out_max) {
+double dmap(double x, double in_min, double in_max, double out_min, double out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	if (hadc == &hadc1) {
 		if (pwm_active) {
-			if (ADC1_DMA_Buffer[1] > fmap((double)ADC2_DMA_Buffer[1], 4095.0, 0.0, 1241.0, 3239.0)) {
-				if (voltage_reduction < 3239.0)
-					voltage_reduction += 10;
-				if (voltage_reduction > 3239.0)
-					voltage_reduction = 3239.0;
-			} else {
-				if (voltage_reduction > 0)
-					voltage_reduction -= 10;
-				if (voltage_reduction < 0)
-					voltage_reduction = 0;
-			}
-			// error calculation
-			measurement = (double)ADC1_DMA_Buffer[0];
-			setpoint    = fmap((double)ADC2_DMA_Buffer[0], 4095.0, 0.0, 1241.0, 3239.0) - voltage_reduction;
-			// PI calculation
-			PID_Compute(&TPID);
-			pwm_compare_value = (uint32_t)pid_output;
+			// Get new ADC value
+			u_measurement = (double)ADC1_DMA_Buffer[0];
+			i_measurement = (double)ADC1_DMA_Buffer[1];
+			u_setpoint    = dmap((double)ADC2_DMA_Buffer[0], 4095.0, 0.0, 1241.0, 3239.0);
+			i_setpoint    = dmap((double)ADC2_DMA_Buffer[1], 4095.0, 0.0, 1241.0, 3239.0);
+			// PID calculation
+			PID_Compute(&uPID);
+			PID_Compute(&iPID);
+			pwm_duty_cycle = pwm_soft_start;
 			// Soft start for first time
 			if (pwm_soft_start < MAX_PWM_DUTY_CYCLE)
 				pwm_soft_start += 5;
-			if (pwm_compare_value > pwm_soft_start)
-				pwm_compare_value = pwm_soft_start;
+			if (pwm_duty_cycle > u_pid_output)
+				pwm_duty_cycle = u_pid_output;
+			if (pwm_duty_cycle > i_pid_output)
+				pwm_duty_cycle = i_pid_output;
 			// Set PWM with DMA Buffer
-			HRTIM_DMA_Buffer[0] = pwm_compare_value;
+			HRTIM_DMA_Buffer[0] = pwm_duty_cycle;
 		} else {
 			pwm_soft_start = 0;
 			HRTIM_DMA_Buffer[0] = 0;
@@ -152,10 +144,14 @@ int main(void)
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
 
-  PID(&TPID, &measurement, &pid_output, &setpoint, 0.2, 0.3, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
-  PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
-  PID_SetSampleTime(&TPID, 500);
-  PID_SetOutputLimits(&TPID, 0, (double)MAX_PWM_DUTY_CYCLE);
+  PID(&uPID, &u_measurement, &u_pid_output, &u_setpoint, 0.2, 0.3, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
+  PID(&iPID, &i_measurement, &i_pid_output, &i_setpoint, 0.2, 0.3, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
+  PID_SetMode(&uPID, _PID_MODE_AUTOMATIC);
+  PID_SetMode(&iPID, _PID_MODE_AUTOMATIC);
+  PID_SetSampleTime(&uPID, 500);
+  PID_SetSampleTime(&iPID, 500);
+  PID_SetOutputLimits(&uPID, 0, (double)MAX_PWM_DUTY_CYCLE);
+  PID_SetOutputLimits(&iPID, 0, (double)MAX_PWM_DUTY_CYCLE);
 
   // Start HRTIM
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1 + HRTIM_OUTPUT_TA2);
