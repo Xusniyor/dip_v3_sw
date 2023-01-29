@@ -140,7 +140,7 @@ int main(void)
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
 
-  PID(&TPID, &measurement, &pid_output, &setpoint, 2, 5, 1, _PID_P_ON_E, _PID_CD_DIRECT);
+  PID(&TPID, &measurement, &pid_output, &setpoint, 0.2, 0.3, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
   PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
   PID_SetSampleTime(&TPID, 500);
   PID_SetOutputLimits(&TPID, 0, (double)MAX_PWM_DUTY_CYCLE);
