@@ -60,9 +60,12 @@ uint16_t ADC2_DMA_Buffer[ADC2_BUF_LEN];
 uint32_t pwm_duty_cycle;
 uint32_t pwm_soft_start;
 uint8_t  pwm_active;
-double u_measurement, i_measurement;
-double u_setpoint,    i_setpoint;
-double u_pid_output,  i_pid_output;
+double u_measurement,  i_measurement;
+double u_setpoint,     i_setpoint;
+double u_pid_output,   i_pid_output;
+double dc_link,        vin_voltage;
+double output_voltage, output_current;
+float temperature;
 
 /* USER CODE END PV */
 
@@ -99,7 +102,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 				pwm_duty_cycle = u_pid_output;
 			if (pwm_duty_cycle > i_pid_output)
 				pwm_duty_cycle = i_pid_output;
-			// Set PWM with DMA Buffer
+			// Set PWM duty cycle with DMA Buffer
 			HRTIM_DMA_Buffer[0] = pwm_duty_cycle;
 		} else {
 			pwm_soft_start = 0;
@@ -146,7 +149,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   // PID controller settings
-  PID(&uPID, &u_measurement, &u_pid_output, &u_setpoint, 0.2, 0.3, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
+  PID(&uPID, &u_measurement, &u_pid_output, &u_setpoint, 0.2,  0.3,  0.0, _PID_P_ON_E, _PID_CD_DIRECT);
   PID(&iPID, &i_measurement, &i_pid_output, &i_setpoint, 0.02, 0.03, 0.0, _PID_P_ON_E, _PID_CD_DIRECT);
   PID_SetMode(&uPID, _PID_MODE_AUTOMATIC);
   PID_SetMode(&iPID, _PID_MODE_AUTOMATIC);
@@ -155,10 +158,10 @@ int main(void)
   PID_SetOutputLimits(&uPID, 0, (double)MAX_PWM_DUTY_CYCLE);
   PID_SetOutputLimits(&iPID, 0, (double)MAX_PWM_DUTY_CYCLE);
 
-  // Start HRTIM
+  // Start HRTIM with DMA
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1 + HRTIM_OUTPUT_TA2);
   HAL_HRTIM_WaveformCountStart_DMA(&hhrtim1, HRTIM_TIMERID_TIMER_A);
-  // Start ADC
+  // Start ADC with DMA
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)ADC1_DMA_Buffer, ADC1_BUF_LEN);
   HAL_ADC_Start_DMA(&hadc2, (uint32_t *)ADC2_DMA_Buffer, ADC2_BUF_LEN);
 
