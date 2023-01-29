@@ -184,6 +184,7 @@ int main(void)
 	  dc_link        = dmap((double)ADC2_DMA_Buffer[2], 0.0, 4095.0, 0.0, 1716.0);
 	  vin_voltage    = dmap((double)ADC2_DMA_Buffer[4], 0.0, 4095.0, 0.0, 36.0);
 	  temperature    = ntc_convertToC((float)ADC2_DMA_Buffer[3]);
+
   }
   /* USER CODE END 3 */
 }
