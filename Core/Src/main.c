@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 
 #include "pid.h"
+#include "ntc.h"
 
 /* USER CODE END Includes */
 
@@ -177,6 +178,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  // Get and calculation new ADC value
+	  output_voltage = dmap((double)ADC1_DMA_Buffer[0], 0.0, 4095.0, 0.0, 152.0);
+	  output_current = dmap((double)ADC1_DMA_Buffer[1], 0.0, 4095.0, 0.0, 66.0);
+	  dc_link        = dmap((double)ADC2_DMA_Buffer[2], 0.0, 4095.0, 0.0, 1716.0);
+	  vin_voltage    = dmap((double)ADC2_DMA_Buffer[4], 0.0, 4095.0, 0.0, 36.0);
+	  temperature    = ntc_convertToC((float)ADC2_DMA_Buffer[3]);
   }
   /* USER CODE END 3 */
 }
