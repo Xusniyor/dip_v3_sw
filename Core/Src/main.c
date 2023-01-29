@@ -64,6 +64,7 @@ uint8_t  pwm_active;
 double measurement;
 double setpoint;
 double pid_output;
+double voltage_reduction;
 
 /* USER CODE END PV */
 
@@ -83,9 +84,16 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	if (hadc == &hadc1) {
 		if (pwm_active) {
+			if (ADC1_DMA_Buffer[1] > fmap((double)ADC2_DMA_Buffer[1], 4095.0, 0.0, 1241.0, 3239.0)) {
+				if (voltage_reduction < 3239.0)
+					voltage_reduction += 1;
+			} else {
+				if (voltage_reduction > 0)
+					voltage_reduction -= 1;
+			}
 			// error calculation
 			measurement = (double)ADC1_DMA_Buffer[0];
-			setpoint    = fmap((double)ADC2_DMA_Buffer[0], 4095.0, 0.0, 1241.0, 3239.0);
+			setpoint    = fmap((double)ADC2_DMA_Buffer[0], 4095.0, 0.0, 1241.0, 3239.0) - voltage_reduction;
 			// PI calculation
 			PID_Compute(&TPID);
 			pwm_compare_value = (uint32_t)pid_output;
