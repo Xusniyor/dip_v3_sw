@@ -28,6 +28,10 @@
 
 #include "pid.h"
 #include "ntc.h"
+#include "din.h"
+#include "df.h"
+#include "leds.h"
+#include "relays.h"
 
 /* USER CODE END Includes */
 
@@ -61,6 +65,7 @@ uint16_t ADC2_DMA_Buffer[ADC2_BUF_LEN];
 uint32_t pwm_duty_cycle;
 uint32_t pwm_soft_start;
 uint8_t  pwm_active;
+uint8_t  power;
 double u_measurement,  i_measurement;
 double u_setpoint,     i_setpoint;
 double u_pid_output,   i_pid_output;
@@ -167,7 +172,6 @@ int main(void)
   HAL_ADC_Start_DMA(&hadc2, (uint32_t *)ADC2_DMA_Buffer, ADC2_BUF_LEN);
 
   HAL_Delay(1000);
-  pwm_active = 1;
 
   /* USER CODE END 2 */
 
@@ -178,13 +182,71 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  // Get and calculation new ADC value
-	  output_voltage = dmap((double)ADC1_DMA_Buffer[0], 0.0, 4095.0, 0.0, 152.0);
-	  output_current = dmap((double)ADC1_DMA_Buffer[1], 0.0, 4095.0, 0.0, 66.0);
-	  dc_link        = dmap((double)ADC2_DMA_Buffer[2], 0.0, 4095.0, 0.0, 1716.0);
-	  vin_voltage    = dmap((double)ADC2_DMA_Buffer[4], 0.0, 4095.0, 0.0, 36.0);
-	  temperature    = ntc_convertToC((float)ADC2_DMA_Buffer[3]);
 
+	// Get and calculation new ADC value
+	output_voltage = dmap((double)ADC1_DMA_Buffer[0], 0.0, 4095.0, 0.0, 152.0);
+	output_current = dmap((double)ADC1_DMA_Buffer[1], 0.0, 4095.0, 0.0, 66.0);
+	dc_link        = dmap((double)ADC2_DMA_Buffer[2], 0.0, 4095.0, 0.0, 1716.0);
+	vin_voltage    = dmap((double)ADC2_DMA_Buffer[4], 0.0, 4095.0, 0.0, 36.0);
+	temperature    = ntc_convertToC((float)ADC2_DMA_Buffer[3]);
+
+	/* ######################################## */
+	if (df_isSet(0, DIN_DON())) { // on
+		power = 1;
+	}
+	if (df_isSet(1, DIN_DOFF())) { // off
+		power = 0;
+	}
+	/* ######################################## */
+	if (df_isSet(2, DIN_LON())) { // light
+		if (output_voltage > 50)
+			RELAY_NIG(1);
+		else if (output_voltage < 40)
+			RELAY_NIG(0);
+	} else {
+		RELAY_NIG(0);
+	}
+	/* ######################################## */
+	if (df_isSet(3, DIN_OEN())) { // Ruxsat
+		if (power)
+			RELAY_CON(1);
+		else
+			RELAY_CON(0);
+	} else {
+		power = 0;
+		RELAY_CON(0);
+	}
+	/* ######################################## */
+	while (df_isSet(4, DIN_USE_BUTTON())) {
+		RELAY_NIG(0);
+		RELAY_CON(0);
+		RELAY_ERO(0);
+		power = 0;
+		pwm_active = 1;
+	}
+	/* ######################################## */
+	if (power) {
+		if (dc_link > 500.0)
+			pwm_active = 1;
+		else if (dc_link < 450)
+			pwm_active = 0;
+	} else {
+		if (dc_link > 150.0)
+			pwm_active = 1;
+		else if (dc_link < 100)
+			pwm_active = 0;
+	}
+	/* ######################################## */
+	if (temperature > 50.0)
+		LED_TMP(1);
+	else
+		LED_TMP(0);
+	/* ######################################## */
+	if (dc_link > 50.0)
+		LED_HV(1);
+	else
+		LED_HV(0);
+	/* ######################################## */
   }
   /* USER CODE END 3 */
 }
